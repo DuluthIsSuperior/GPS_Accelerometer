@@ -82,6 +82,7 @@ int retries = 0;
 int retriesAllowed = 2000;
 bool recording = false;
 bool oldA6 = false;
+bool gpsError = false;
 void loop() {
   if (records == 0) {
     dataFile = SD.open("datalog.txt", FILE_WRITE);  // didn't like being initalized in setup() for some reason
@@ -89,9 +90,7 @@ void loop() {
 
   if (!dataFile) {
     Serial.print(F("ERR -> "));
-    toggleLED(errorLED, true);
   } else {
-    toggleLED(errorLED, false);
     if (recording) {
       Serial.print(F("REC -> "));
     } else {
@@ -123,11 +122,11 @@ void loop() {
   printWriteAndClear(buf, dataFile, bufSize, false);
   
   if (gps.location.age() > 2500) {
-    toggleLED(errorLED, true);
+    gpsError = true;
     sprintf_P(buf, (PGM_P) F("--.------,---.------,"));
     printWriteAndClear(buf, dataFile, bufSize, false);
   } else {
-    toggleLED(errorLED, false);
+    gpsError = false;
     dtostrf(oldLat, 1, 6, decBufs[0]);
     sprintf_P(buf, strFormat, decBufs[0]);
     printWriteAndClear(buf, dataFile, bufSize, false);
@@ -205,7 +204,11 @@ void loop() {
 }
 
 void tripErrorLED() {
-  
+  if (!dataFile || gpsError) {
+    toggleLED(errorLED, HIGH);
+  } else {
+    toggleLED(errorLED, LOW);
+  }
 }
 
 void clear(char *str, int size) {
