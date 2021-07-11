@@ -43,7 +43,7 @@ void setup() {
 
   if (!mpu.begin()) {
     Serial.println(F("Failed to find accelerometer; we are hanging here"));
-    
+    toggleLED(errorLED, true);
     while (1) {}
   }
 
@@ -87,13 +87,16 @@ void loop() {
     dataFile = SD.open("datalog.txt", FILE_WRITE);  // didn't like being initalized in setup() for some reason
   }
 
-  toggleLED(errorLED, dataFile ? LOW : HIGH);
   if (!dataFile) {
     Serial.print(F("ERR -> "));
-  } else if (recording) {
-    Serial.print(F("REC -> "));
+    toggleLED(errorLED, true);
   } else {
-    Serial.print(F("STP -> "));
+    toggleLED(errorLED, false);
+    if (recording) {
+      Serial.print(F("REC -> "));
+    } else {
+      Serial.print(F("STP -> "));
+    }
   }
 
   while (ss.available() > 0) {
@@ -119,15 +122,24 @@ void loop() {
   sprintf_P(buf, strFormat, lastUpdated);
   printWriteAndClear(buf, dataFile, bufSize, false);
   
-  dtostrf(oldLat, 1, 6, decBufs[0]);
-  sprintf_P(buf, strFormat, decBufs[0]);
-  printWriteAndClear(buf, dataFile, bufSize, false);
-  clear(decBufs[0], decBufSize);
-  
-  dtostrf(oldLon, 1, 6, decBufs[0]);
-  sprintf_P(buf, strFormat, decBufs[0]);
-  printWriteAndClear(buf, dataFile, bufSize, false);
-  clear(decBufs[0], decBufSize);
+  if (gps.location.age() > 2500) {
+    toggleLED(errorLED, true);
+    sprintf_P(buf, (PGM_P) F("--.------,---.------,"));
+    printWriteAndClear(buf, dataFile, bufSize, false);
+  } else {
+    toggleLED(errorLED, false);
+    dtostrf(oldLat, 1, 6, decBufs[0]);
+    sprintf_P(buf, strFormat, decBufs[0]);
+    printWriteAndClear(buf, dataFile, bufSize, false);
+    clear(decBufs[0], decBufSize);
+    
+    dtostrf(oldLon, 1, 6, decBufs[0]);
+    sprintf_P(buf, strFormat, decBufs[0]);
+    printWriteAndClear(buf, dataFile, bufSize, false);
+    clear(decBufs[0], decBufSize);
+  }
+
+  tripErrorLED();
 
   sensors_event_t a, g, temp;
   if (mpu.getEvent(&a, &g, &temp)) {
@@ -152,6 +164,9 @@ void loop() {
     retries++;
     if (retries > retriesAllowed) {
       Serial.print(F("Accelerometer lost; we are hanging here"));
+      toggleLED(errorLED, true);
+      toggleLED(runningLED, false);
+      while (1) {}
     }
   }
 
@@ -177,6 +192,8 @@ void loop() {
   sprintf_P(buf, strFormatNoComma, recording ? "|R" : "|-");
   printAndClear(buf, bufSize, false);
   sprintf_P(buf, strFormatNoComma, newA6 ? "1" : "-");
+  printAndClear(buf, bufSize, false);
+  sprintf(buf, "[%d]", gps.location.age());
   printAndClear(buf, bufSize, true);
 
   records++;
@@ -185,6 +202,10 @@ void loop() {
     dataFile.close();
     records = 0;
   }
+}
+
+void tripErrorLED() {
+  
 }
 
 void clear(char *str, int size) {
@@ -245,7 +266,7 @@ void intToString(int integer, char *str) {
   clear(b, 3);
   itoa(integer, b, 10);
   if (integer < 10) {
-    sprintf(str, "0");
+    sprintf_P(str, (PGM_P) F("0"));
   }
   appendToString(str, b);
 }
