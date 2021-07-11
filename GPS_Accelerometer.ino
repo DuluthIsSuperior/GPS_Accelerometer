@@ -13,15 +13,6 @@ File dataFile;
 const char decFormat[] PROGMEM = "%d,";
 const char strFormat[] PROGMEM = "%s,";
 const char strFormatNoComma[] PROGMEM = "%s";
-const char accFormat[] PROGMEM = "a%s,";
-const char noData[] PROGMEM = "a---.--,---.--,---.--,";
-const char defaultUpdate[] PROGMEM = "--/--/---- --:--:--";
-const char lastUpdatedFormat[] PROGMEM = "%s/%s/%d,%s:%s:%s";
-const char prependZerosToString[] PROGMEM = "00%s";
-const char prependZeroToString[] PROGMEM = "0%s";
-const char prependNegativeZeroToString[] PROGMEM = "-0%s";
-const char prependNegativeToString[] PROGMEM = "-%s";
-const char appendString[] PROGMEM = "%s%s";
 
 const int sdChipSelect = 7;
 
@@ -66,7 +57,7 @@ void setup() {
     Serial.println(F("Could not find SD card"));
     toggleLED(errorLED, true);
   }
-  sprintf_P(lastUpdated, defaultUpdate);
+  sprintf_P(lastUpdated, (PGM_P) F("--/--/---- --:--:--"));
   for (int i = 0; i < numOfDecBufs; i++) {
     clear(decBufs[i], decBufSize);
   }
@@ -117,7 +108,7 @@ void loop() {
         intToString(gps.time.hour(), decBufs[2]);
         intToString(gps.time.minute(), decBufs[3]);
         intToString(gps.time.second(), decBufs[4]);
-        sprintf_P(lastUpdated, lastUpdatedFormat, decBufs[0], decBufs[1], gps.date.year(), decBufs[2], decBufs[3], decBufs[4]);
+        sprintf_P(lastUpdated, (PGM_P) F("%s/%s/%d,%s:%s:%s"), decBufs[0], decBufs[1], gps.date.year(), decBufs[2], decBufs[3], decBufs[4]);
         for (int i = 0; i <= 4; i++) {
           clear(decBufs[i], decBufSize);
         }
@@ -141,7 +132,7 @@ void loop() {
   sensors_event_t a, g, temp;
   if (mpu.getEvent(&a, &g, &temp)) {
     floatToString(a.acceleration.x + xAccelerationOffset, 2, decBufs[0]);
-    sprintf_P(buf, accFormat, decBufs[0]);
+    sprintf_P(buf, strFormat, decBufs[0]);
     printWriteAndClear(buf, dataFile, bufSize, false);
     clear(decBufs[0], decBufSize);
     
@@ -155,7 +146,7 @@ void loop() {
     printWriteAndClear(buf, dataFile, bufSize, false);
     clear(decBufs[0], decBufSize);
   } else {
-    sprintf_P(buf, noData);
+    sprintf_P(buf, (PGM_P) F("--/--/---- --:--:--"));
     printWriteAndClear(buf, dataFile, bufSize, false);
     
     retries++;
@@ -167,8 +158,6 @@ void loop() {
   sprintf_P(buf, decFormat, (digitalRead(2) == HIGH ? 1 : 2));  // if SPDT switch is ON I, then main 1 is selected
   printWriteAndClear(buf, dataFile, bufSize, false);
 
-//  sprintf_P(buf, strFormat, digitalRead(A6) == HIGH ? "X" : " ");
-//  printWriteAndClear(buf, dataFile, bufSize, false);
   bool newA6 = digitalRead(A6) == HIGH;
   if (newA6 && !oldA6) {
     oldA6 = true;
@@ -185,7 +174,9 @@ void loop() {
   if (dataFile) {
     dataFile.println();
   }
-  sprintf_P(buf, strFormat, recording ? "|R" : "| ");
+  sprintf_P(buf, strFormatNoComma, recording ? "|R" : "|-");
+  printAndClear(buf, bufSize, false);
+  sprintf_P(buf, strFormatNoComma, newA6 ? "1" : "-");
   printAndClear(buf, bufSize, true);
 
   records++;
@@ -230,13 +221,13 @@ void floatToString(float flt, int decimalPlaces, char *str) {
   clear(b, decBufSize);
   dtostrf(flt < 0.00f ? (flt * -1.0f) : flt, 0, decimalPlaces, b);
   if (flt >= -9.99f && flt < 0.00f) {
-    sprintf_P(str, prependNegativeZeroToString, b);
+    sprintf_P(str, (PGM_P) F("-0%s"), b);
   } else if (flt >= 0.00f && flt <= 9.99f) {
-    sprintf_P(str, prependZerosToString, b);
+    sprintf_P(str, (PGM_P) F("00%s"), b);
   } else if (flt >= -99.99f && flt <= -10.00f) {
-    sprintf_P(str, prependNegativeToString, b);
+    sprintf_P(str, (PGM_P) F("-%s"), b);
   } else if (flt >= 10.00f && flt <= 99.99f) {
-    sprintf_P(str, prependZeroToString, b);
+    sprintf_P(str, (PGM_P) F("0%s"), b);
   } else {
     sprintf_P(str, strFormatNoComma, b);
   }
@@ -245,7 +236,7 @@ void floatToString(float flt, int decimalPlaces, char *str) {
 void appendToString(char *dest, char *src) {
   char buf2[bufSize];
   clear(buf2, bufSize);
-  sprintf_P(buf2, appendString, dest, src);
+  sprintf_P(buf2, (PGM_P) F("%s%s"), dest, src);
   sprintf_P(dest, strFormatNoComma, buf2);
 }
 
