@@ -32,10 +32,15 @@ const int decBufSize = 10;
 const int numOfDecBufs = 6;
 char decBufs[numOfDecBufs][decBufSize];
 void setup() {
+  // BEGIN LAMP TEST
   pinMode(53, OUTPUT);
-  digitalWrite(53, LOW);
   pinMode(49, OUTPUT);
-  digitalWrite(49, LOW);
+  digitalWrite(53, HIGH);
+  digitalWrite(49, HIGH);
+  delay(2000);
+  digitalWrite(53, HIGH);
+  digitalWrite(49, HIGH);
+  // END LAMP TEST
   
   Serial.begin(9600);
   while (!Serial) {
