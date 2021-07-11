@@ -31,15 +31,17 @@ char lastUpdated[24];
 const int decBufSize = 10;
 const int numOfDecBufs = 6;
 char decBufs[numOfDecBufs][decBufSize];
+const int runningLED = 53;
+const int errorLED = 49;
 void setup() {
   // BEGIN LAMP TEST
-  pinMode(53, OUTPUT);
-  pinMode(49, OUTPUT);
-  digitalWrite(53, HIGH);
-  digitalWrite(49, HIGH);
+  pinMode(runningLED, OUTPUT);
+  pinMode(errorLED, OUTPUT);
+  toggleLED(runningLED, true);
+  toggleLED(errorLED, true);
   delay(2000);
-  digitalWrite(53, HIGH);
-  digitalWrite(49, HIGH);
+  toggleLED(runningLED, false);
+  toggleLED(errorLED, false);
   // END LAMP TEST
   
   Serial.begin(9600);
@@ -50,6 +52,7 @@ void setup() {
 
   if (!mpu.begin()) {
     Serial.println(F("Failed to find accelerometer; we are hanging here"));
+    
     while (1) {}
   }
 
@@ -61,7 +64,7 @@ void setup() {
 
   if (!SD.begin(sdChipSelect)) {
     Serial.println(F("Could not find SD card"));
-    digitalWrite(49, HIGH);
+    toggleLED(errorLED, true);
   }
   sprintf_P(lastUpdated, defaultUpdate);
   for (int i = 0; i < numOfDecBufs; i++) {
@@ -75,7 +78,7 @@ void setup() {
   pinMode(A9, INPUT);
   Serial.println(F("Running"));
   delay(1000);  // gives time to read errors before proceeding
-  digitalWrite(53, HIGH);
+  toggleLED(runningLED, true);
 }
 
 const int bufSize = 22 + 1; // + 1 for null terminator
@@ -93,7 +96,7 @@ void loop() {
     dataFile = SD.open("datalog.txt", FILE_WRITE);  // didn't like being initalized in setup() for some reason
   }
 
-  digitalWrite(49, dataFile ? LOW : HIGH);
+  toggleLED(errorLED, dataFile ? LOW : HIGH);
   if (!dataFile) {
     Serial.print(F("ERR -> "));
   } else if (recording) {
@@ -254,4 +257,8 @@ void intToString(int integer, char *str) {
     sprintf(str, "0");
   }
   appendToString(str, b);
+}
+
+void toggleLED(int pin, bool on) {
+  digitalWrite(pin, on ? HIGH : LOW);
 }
