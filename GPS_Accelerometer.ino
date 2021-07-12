@@ -203,11 +203,21 @@ void loop() {
   }
 }
 
+bool oldErrorLEDState = false;
+long lastErrorLEDStateChange = millis();
 void tripErrorLED() {
-  if (!dataFile || gpsError) {
+  if (!dataFile) {
     toggleLED(errorLED, HIGH);
-  } else {
+  } else if (gpsError) {
+    if (millis() - lastErrorLEDStateChange > 1000) {
+      oldErrorLEDState = !oldErrorLEDState;
+      toggleLED(errorLED, oldErrorLEDState);
+      lastErrorLEDStateChange = millis();
+    }
+  } else if (oldErrorLEDState) {  // if there are no errors present, clear the LED
     toggleLED(errorLED, LOW);
+    oldErrorLEDState = false;
+    lastErrorLEDStateChange = millis();
   }
 }
 
