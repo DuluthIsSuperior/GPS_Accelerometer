@@ -83,6 +83,8 @@ int retriesAllowed = 2000;
 bool recording = false;
 bool oldA6 = false;
 bool gpsError = false;
+const float moderateAcceleration = 3.6f;
+const float severeAcceleration = 8.2f;
 void loop() {
   if (records == 0) {
     dataFile = SD.open("datalog.txt", FILE_WRITE);  // didn't like being initalized in setup() for some reason
@@ -142,20 +144,14 @@ void loop() {
 
   sensors_event_t a, g, temp;
   if (mpu.getEvent(&a, &g, &temp)) {
-    floatToString(a.acceleration.x + xAccelerationOffset, 2, decBufs[0]);
-    sprintf_P(buf, strFormat, decBufs[0]);
-    printWriteAndClear(buf, dataFile, bufSize, false);
-    clear(decBufs[0], decBufSize);
+    float xAcceleration = a.acceleration.x + xAccelerationOffset;
+    changeAccelerationStatus(47, 45, 43, xAcceleration);
     
-    floatToString(a.acceleration.y + yAccelerationOffset, 2, decBufs[0]);
-    sprintf_P(buf, strFormat, decBufs[0]);
-    printWriteAndClear(buf, dataFile, bufSize, false);
-    clear(decBufs[0], decBufSize);
+    float yAcceleration = a.acceleration.y + yAccelerationOffset;
+    changeAccelerationStatus(41, 39, 37, yAcceleration);
     
-    floatToString(a.acceleration.z + zAccelerationOffset, 2, decBufs[0]);
-    sprintf_P(buf, strFormat, decBufs[0]);
-    printWriteAndClear(buf, dataFile, bufSize, false);
-    clear(decBufs[0], decBufSize);
+    float zAcceleration = a.acceleration.z + zAccelerationOffset;
+    changeAccelerationStatus(35, 33, 31, zAcceleration);
   } else {
     sprintf_P(buf, (PGM_P) F("--/--/---- --:--:--"));
     printWriteAndClear(buf, dataFile, bufSize, false);
@@ -286,4 +282,14 @@ void intToString(int integer, char *str) {
 
 void toggleLED(int pin, bool on) {
   digitalWrite(pin, on ? HIGH : LOW);
+}
+
+void changeAccelerationStatus(int p1, int p2, int p3, float acceleration) {
+  toggleLED(p1, acceleration < moderateAcceleration);
+  toggleLED(p2, acceleration >= moderateAcceleration && acceleration < severeAcceleration);
+  toggleLED(p3, acceleration >= severeAcceleration);
+  floatToString(acceleration, 2, decBufs[0]);
+  sprintf_P(buf, strFormat, decBufs[0]);
+  printWriteAndClear(buf, dataFile, bufSize, false);
+  clear(decBufs[0], decBufSize);
 }
